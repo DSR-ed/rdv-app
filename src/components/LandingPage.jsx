@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getAll, remove } from '../utils/storage'
+import { subscribeAll, remove } from '../utils/storage'
 import { generatePDF } from '../utils/pdfUtils'
 import RdvCard from './RdvCard'
 import FilterSort from './FilterSort'
@@ -15,13 +15,13 @@ export default function LandingPage() {
   const [period, setPeriod] = useState('all') // all | week | month
 
   useEffect(() => {
-    setItems(getAll())
+    const unsubscribe = subscribeAll((list) => setItems(list))
+    return () => unsubscribe && unsubscribe()
   }, [])
 
   const onDelete = useCallback((id) => {
     if (confirm('Confirmer la suppression de ce RDV ?')) {
       remove(id)
-      setItems(getAll())
     }
   }, [])
 

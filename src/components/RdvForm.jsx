@@ -24,22 +24,31 @@ export default function RdvForm() {
   })
   const [errors, setErrors] = useState({})
   const isEdit = Boolean(id)
+  const [loading, setLoading] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   useEffect(() => {
     if (isEdit) {
-      const existing = getById(id)
-      if (existing) {
-        setForm({
-          id: existing.id,
-          clientName: existing.clientName,
-          location: existing.location,
-          accompagnant: existing.accompagnant,
-          date: existing.date,
-          time: existing.time,
-          responses: existing.responses?.length === 4 ? existing.responses : ['', '', '', ''],
-          createdAt: existing.createdAt,
-        })
-      }
+      (async () => {
+        setLoading(true)
+        try {
+          const existing = await getById(id)
+          if (existing) {
+            setForm({
+              id: existing.id,
+              clientName: existing.clientName || '',
+              location: existing.location || '',
+              accompagnant: existing.accompagnant || '',
+              date: existing.date || '',
+              time: existing.time || '',
+              responses: existing.responses?.length === 4 ? existing.responses : ['', '', '', ''],
+              createdAt: existing.createdAt || undefined,
+            })
+          }
+        } finally {
+          setLoading(false)
+        }
+      })()
     }
   }, [id, isEdit])
 
@@ -56,15 +65,24 @@ export default function RdvForm() {
     })
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault()
+    setSubmitError('')
     const { valid, errors } = validateRdv(form)
     setErrors(errors)
     if (!valid) return
 
-    const data = normalizeRdv(form)
-    upsert(data)
-    navigate('/')
+    try {
+      setLoading(true)
+      const data = normalizeRdv(form)
+      await upsert(data)
+      navigate('/')
+    } catch (err) {
+      console.error(err)
+      setSubmitError("Erreur d'enregistrement. Vérifiez votre connexion.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -72,6 +90,8 @@ export default function RdvForm() {
       <div className="card">
         <h2 style={{marginTop:0}}>{isEdit ? 'Modifier le RDV' : 'Nouveau RDV'}</h2>
         <form onSubmit={submit}>
+          {loading && <div style={{marginBottom:12, color:'var(--text-light)'}}>Chargement…</div>}
+          {submitError && <div style={{marginBottom:12, color:'var(--danger)'}}>{submitError}</div>}
           <div className="row two">
             <div>
               <label className="label" htmlFor="clientName">Nom du client</label>
